@@ -23,12 +23,13 @@
     body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial;color:var(--text);background:radial-gradient(circle at top,var(--bg-top) 0%,var(--bg-mid) 35%,#000 100%);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 
     .stage{position:relative;width:100%;max-width:1100px;height:clamp(540px,70vh,780px);display:flex;align-items:center;justify-content:center;perspective:1200px}
+
     .panel{position:absolute;left:12%;top:50%;transform:translateY(-50%);width:320px;padding:20px 22px;border-radius:var(--radius);background:linear-gradient(145deg,var(--panel-bg-1),var(--panel-bg-2));border:1px solid rgba(212,175,55,0.45);box-shadow:0 6px 30px rgba(0,0,0,0.7),0 0 26px rgba(212,175,55,0.2);color:var(--accent-txt);z-index:5}
     .panel-title{color:var(--gold);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;font-size:.86rem}
     .panel-text{color:var(--accent-txt);font-size:.95rem;line-height:1.45;margin-bottom:14px}
     .panel-note{color:#c9b47a;font-size:.82rem;margin-bottom:12px}
     .panel-actions{display:flex;gap:12px;align-items:center}
-    .btn{appearance:none;border:0;cursor:pointer;padding:10px 16px;border-radius:999px;background:radial-gradient(circle at top,#f5e1a8,#b68a2f 60%,#3b2a0f);color:#120b03;font-weight:700;text-transform:uppercase;font-size:.88rem;box-shadow:0 6px 14px rgba(0,0,0,0.45)}
+    .btn{appearance:none;border:0;cursor:pointer;padding:10px 16px;border-radius:999px;background:radial-gradient(circle at top,#f5e1a8,#b68a2f 60%,#3b2a0f);color:#120b03;font-weight:700;text-transform:uppercase;font-size:.88rem;box-shadow:0 6px 14px rgba(0,0,0,0.45);text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
     .btn:focus{outline:3px solid rgba(212,175,55,0.25);outline-offset:3px}
 
     .doorway{width:320px;height:520px;border-radius:24px;border:1px solid rgba(212,175,55,0.35);background:linear-gradient(160deg,rgba(5,3,8,0.95),rgba(20,5,15,0.95));box-shadow:0 0 40px rgba(212,175,55,0.22),0 0 120px rgba(0,0,0,0.85);transform:translateX(60px) rotateY(-12deg);display:flex;align-items:center;justify-content:center;position:relative;z-index:2}
@@ -69,8 +70,10 @@
       <p class="panel-text">This is where you stop leaking energy into people who haven’t earned it. Every question costs you something—time, attention, power.</p>
       <p class="panel-note">Pricing: <strong>$9.99/month</strong> or <strong>$0.99 per question</strong>.</p>
       <div class="panel-actions">
-        <button class="btn" id="open-modal" type="button">Premium Access • Crown On</button>
-        <button class="btn" id="buy-single" type="button">Buy 1 Question • $0.99</button>
+        <!-- Subscription hosted Payment Link (opens in new tab) -->
+        <a class="btn" id="open-modal" href="https://buy.stripe.com/fZu4gA7N9eHTfRb7lS0sU01" target="_blank" rel="noopener noreferrer">Premium Access • Crown On</a>
+        <!-- Single-question hosted Payment Link (opens in new tab) -->
+        <a class="btn" id="buy-single" href="https://buy.stripe.com/00w7sM5F1czLbAVgWs0sU02" target="_blank" rel="noopener noreferrer">Buy 1 Question • $0.99</a>
       </div>
     </aside>
 
@@ -83,7 +86,7 @@
     <div class="whisper" aria-hidden="false">YOU ARE THE ROOM • NOT THE REQUEST</div>
   </main>
 
-  <!-- Accessible modal: collects email & pricing choice, starts Stripe Checkout via /api/create-checkout-session -->
+  <!-- Accessible modal remains for server-based flow if needed -->
   <div id="modal-backdrop" class="modal-backdrop" role="presentation" aria-hidden="true">
     <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
       <h3 id="modal-title">Premium Access</h3>
@@ -112,14 +115,14 @@
     </div>
   </div>
 
-  <!-- Stripe.js (client-only) - you'll still need a server endpoint to create Checkout sessions -->
+  <!-- Stripe.js (client-only) - you'll still need a server endpoint to create Checkout sessions if you use server flow -->
   <script src="https://js.stripe.com/v3/"></script>
   <script>
-    // Configuration: replace with your publishable key and server endpoint
+    // Configuration: replace with your publishable key and server endpoint if using server flow
     const STRIPE_PUBLISHABLE_KEY = 'pk_test_REPLACE_ME'; // <-- REPLACE
     const CREATE_CHECKOUT_SESSION_URL = '/api/create-checkout-session'; // <-- implement on server to call Stripe with secret key
 
-    // Initialize Stripe client
+    // Initialize Stripe client (may be unused if using hosted Payment Links)
     let stripe = null;
     if (window.Stripe) {
       stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
@@ -158,8 +161,22 @@
         if (lastFocused && lastFocused.focus) lastFocused.focus();
       }
 
-      openBtn.addEventListener('click', ()=> openModal('monthly'));
-      buySingleBtn.addEventListener('click', ()=> openModal('single'));
+      // If using hosted links, track clicks and open in new tab safely
+      openBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const url = openBtn.href;
+        if (window.gtag) gtag('event', 'redirect_to_payment_link', { 'link': url, 'plan': 'monthly' });
+        window.open(url, '_blank', 'noopener');
+      });
+
+      buySingleBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const url = buySingleBtn.href;
+        if (window.gtag) gtag('event', 'redirect_to_payment_link', { 'link': url, 'plan': 'single' });
+        window.open(url, '_blank', 'noopener');
+      });
+
+      // Keep modal handlers for server-based flow (startPayment) if needed
       cancelBtn.addEventListener('click', closeModal);
 
       // Close on backdrop click (but ensure we don't close when clicking inside modal)
@@ -168,7 +185,7 @@
       // Close on Escape
       document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && modalBackdrop.getAttribute('aria-hidden') === 'false') closeModal(); });
 
-      // Payment form submit: call server to create a Stripe Checkout session
+      // Payment form submit: call server to create a Stripe Checkout session (kept for server flow)
       paymentForm.addEventListener('submit', async (e)=>{
         e.preventDefault();
         const email = emailInput.value.trim();
@@ -247,19 +264,11 @@
   </script>
 
   <!-- Notes for maintainers:
-       - Implement a server endpoint at CREATE_CHECKOUT_SESSION_URL that creates a Stripe Checkout session using your secret key.
-         Example server payload expectations: { email, plan }
-         The server should return JSON { sessionId } or { url }.
-       - Set your Stripe Checkout success_url and cancel_url to include parameters you can read here (e.g. success_url: https://your-site/mirror-room.html?checkout_status=success&session_id={CHECKOUT_SESSION_ID})
-       - Replace STRIPE_PUBLISHABLE_KEY with your publishable key and Google Analytics ID above.
-       - Consider adding server-side verification (webhook) to confirm payments before granting access.
-
-       Analytics events emitted:
-         - open_modal (when modal opens)
-         - begin_checkout (when user submits form)
-         - redirect_to_checkout (if server provides a hosted URL)
-         - checkout_error (on failure)
-         - purchase (if URL indicates success)
+       - The "Buy 1 Question" and "Premium Access" buttons now use hosted Stripe Payment Links.
+         - Single one-off (0.99): https://buy.stripe.com/00w7sM5F1czLbAVgWs0sU02
+         - Subscription (9.99): https://buy.stripe.com/fZu4gA7N9eHTfRb7lS0sU01
+       - If you prefer server Checkout sessions for subscriptions, restore the modal flow and configure server /api/create-checkout-session.
+       - Replace STRIPE_PUBLISHABLE_KEY and GA4 ID as needed.
   -->
 
 </body>
