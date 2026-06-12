@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Mirror Room — a gentle interface to reflect and ask questions. Premium access available." />
+  <meta name="theme-color" content="#12000b" />
+  <title>Mirror Room</title>
+
+  <!-- Google Analytics / GA4 (replace G-XXXXXXX with your measurement ID) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);} 
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXX'); // <-- REPLACE
+  </script>
+
+  <style>
+    :root{ --gold:#d4af37; --rose-gold:#b76e79; --bg-top:#3b0b2f; --bg-mid:#12000b; --text:#f5e9ff; --panel-bg-1:#3b2a0f; --panel-bg-2:#1c1407; --accent-txt:#fbeed0; --muted:rgba(245,225,200,0.75); --radius:18px }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial;color:var(--text);background:radial-gradient(circle at top,var(--bg-top) 0%,var(--bg-mid) 35%,#000 100%);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+
+    .stage{position:relative;width:100%;max-width:1100px;height:clamp(540px,70vh,780px);display:flex;align-items:center;justify-content:center;perspective:1200px}
+    .panel{position:absolute;left:12%;top:50%;transform:translateY(-50%);width:320px;padding:20px 22px;border-radius:var(--radius);background:linear-gradient(145deg,var(--panel-bg-1),var(--panel-bg-2));border:1px solid rgba(212,175,55,0.45);box-shadow:0 6px 30px rgba(0,0,0,0.7),0 0 26px rgba(212,175,55,0.2);color:var(--accent-txt);z-index:5}
+    .panel-title{color:var(--gold);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;font-size:.86rem}
+    .panel-text{color:var(--accent-txt);font-size:.95rem;line-height:1.45;margin-bottom:14px}
+    .panel-note{color:#c9b47a;font-size:.82rem;margin-bottom:12px}
+    .panel-actions{display:flex;gap:12px;align-items:center}
+    .btn{appearance:none;border:0;cursor:pointer;padding:10px 16px;border-radius:999px;background:radial-gradient(circle at top,#f5e1a8,#b68a2f 60%,#3b2a0f);color:#120b03;font-weight:700;text-transform:uppercase;font-size:.88rem;box-shadow:0 6px 14px rgba(0,0,0,0.45)}
+    .btn:focus{outline:3px solid rgba(212,175,55,0.25);outline-offset:3px}
+
+    .doorway{width:320px;height:520px;border-radius:24px;border:1px solid rgba(212,175,55,0.35);background:linear-gradient(160deg,rgba(5,3,8,0.95),rgba(20,5,15,0.95));box-shadow:0 0 40px rgba(212,175,55,0.22),0 0 120px rgba(0,0,0,0.85);transform:translateX(60px) rotateY(-12deg);display:flex;align-items:center;justify-content:center;position:relative;z-index:2}
+    .silhouette{width:60%;height:80%;border-radius:50% 50% 40% 40%;background:radial-gradient(circle at top,rgba(255,255,255,0.08),rgba(0,0,0,0.95) 40%,#000 100%);opacity:.92}
+    .crown{position:absolute;top:10%;left:50%;transform:translateX(-50%);width:120px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,0.95),rgba(212,175,55,0.6));filter:blur(6px);opacity:.9}
+
+    .whisper{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);z-index:6;text-align:center;padding:6px 10px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+
+    /* Modal styles */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:40}
+    .modal{background:linear-gradient(180deg,#1a0e14,#10070b);color:var(--text);max-width:520px;width:100%;border-radius:12px;padding:20px;border:1px solid rgba(212,175,55,0.4);box-shadow:0 12px 40px rgba(0,0,0,0.75)}
+    .modal h3{margin-top:0;color:var(--gold);text-transform:uppercase;letter-spacing:.08em}
+    .modal p{color:var(--accent-txt)}
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+    label{font-size:.85rem;color:#e9dcc4}
+    input[type="email"],select{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#0f080a;color:var(--text)}
+    .modal-buttons{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+
+    /* show when active */
+    .modal-backdrop[aria-hidden="false"]{display:flex}
+
+    /* focus outline helper */
+    :focus{outline-offset:3px}
+
+    /* reduced motion */
+    @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+
+    .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  </style>
+</head>
+<body>
+
+  <a class="sr-only" href="#main">Skip to content</a>
+
+  <main id="main" class="stage" role="main" aria-label="Mirror Room visual scene. Use controls to access premium options.">
+    <aside class="panel" aria-labelledby="panel-title" role="complementary">
+      <h2 id="panel-title" class="panel-title">Mirror Room • Confession</h2>
+      <p class="panel-text">This is where you stop leaking energy into people who haven’t earned it. Every question costs you something—time, attention, power.</p>
+      <p class="panel-note">Pricing: <strong>$9.99/month</strong> or <strong>$0.99 per question</strong>.</p>
+      <div class="panel-actions">
+        <button class="btn" id="open-modal" type="button">Premium Access • Crown On</button>
+        <button class="btn" id="buy-single" type="button">Buy 1 Question • $0.99</button>
+      </div>
+    </aside>
+
+    <figure class="doorway" role="img" aria-hidden="true">
+      <div class="silhouette" aria-hidden="true">
+        <div class="crown" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <div class="whisper" aria-hidden="false">YOU ARE THE ROOM • NOT THE REQUEST</div>
+  </main>
+
+  <!-- Accessible modal: collects email & pricing choice, starts Stripe Checkout via /api/create-checkout-session -->
+  <div id="modal-backdrop" class="modal-backdrop" role="presentation" aria-hidden="true">
+    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
+      <h3 id="modal-title">Premium Access</h3>
+      <p id="modal-desc">Choose a plan and enter your email to continue to secure checkout.</p>
+
+      <form id="payment-form">
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" inputmode="email" required autocomplete="email" placeholder="you@example.com">
+        </div>
+
+        <div class="field">
+          <label for="plan">Select plan</label>
+          <select id="plan" name="plan">
+            <option value="monthly">Monthly • $9.99 / month</option>
+            <option value="single">Single question • $0.99 (one-time)</option>
+          </select>
+        </div>
+
+        <div class="modal-buttons">
+          <button class="btn" id="cancel" type="button">Cancel</button>
+          <button class="btn" id="start-payment" type="submit">Continue to payment</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Stripe.js (client-only) - you'll still need a server endpoint to create Checkout sessions -->
+  <script src="https://js.stripe.com/v3/"></script>
+  <script>
+    // Configuration: replace with your publishable key and server endpoint
+    const STRIPE_PUBLISHABLE_KEY = 'pk_test_REPLACE_ME'; // <-- REPLACE
+    const CREATE_CHECKOUT_SESSION_URL = '/api/create-checkout-session'; // <-- implement on server to call Stripe with secret key
+
+    // Initialize Stripe client
+    let stripe = null;
+    if (window.Stripe) {
+      stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+    }
+
+    // Modal accessibility helpers: focus trap, restore focus
+    (function(){
+      const openBtn = document.getElementById('open-modal');
+      const buySingleBtn = document.getElementById('buy-single');
+      const modalBackdrop = document.getElementById('modal-backdrop');
+      const modal = document.getElementById('modal');
+      const cancelBtn = document.getElementById('cancel');
+      const startPayment = document.getElementById('start-payment');
+      const emailInput = document.getElementById('email');
+      const planSelect = document.getElementById('plan');
+      const paymentForm = document.getElementById('payment-form');
+
+      let lastFocused = null;
+
+      function openModal(defaultPlan){
+        lastFocused = document.activeElement;
+        if (defaultPlan) planSelect.value = defaultPlan;
+        modalBackdrop.setAttribute('aria-hidden', 'false');
+        modalBackdrop.style.display = 'flex';
+        // send analytics event
+        if (window.gtag) gtag('event', 'open_modal', { 'modal': 'premium' });
+        // focus the first form control
+        setTimeout(()=> emailInput.focus(), 60);
+        trapFocus(modal);
+      }
+
+      function closeModal(){
+        modalBackdrop.setAttribute('aria-hidden', 'true');
+        modalBackdrop.style.display = 'none';
+        releaseFocusTrap();
+        if (lastFocused && lastFocused.focus) lastFocused.focus();
+      }
+
+      openBtn.addEventListener('click', ()=> openModal('monthly'));
+      buySingleBtn.addEventListener('click', ()=> openModal('single'));
+      cancelBtn.addEventListener('click', closeModal);
+
+      // Close on backdrop click (but ensure we don't close when clicking inside modal)
+      modalBackdrop.addEventListener('click', (e)=>{ if (e.target === modalBackdrop) closeModal(); });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && modalBackdrop.getAttribute('aria-hidden') === 'false') closeModal(); });
+
+      // Payment form submit: call server to create a Stripe Checkout session
+      paymentForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const email = emailInput.value.trim();
+        const plan = planSelect.value;
+        if (!email) { emailInput.focus(); return }
+
+        // Analytics: user started checkout
+        if (window.gtag) gtag('event', 'begin_checkout', { 'currency':'USD', 'value': plan === 'monthly' ? 9.99 : 0.99, 'items':[{'id':plan}] });
+
+        try{
+          const res = await fetch(CREATE_CHECKOUT_SESSION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, plan })
+          });
+          if (!res.ok) throw new Error('Network response not ok');
+          const { sessionId, url } = await res.json();
+
+          // Option A: If server returned a Stripe-hosted URL, redirect there
+          if (url) {
+            // Track event before redirect if possible
+            if (window.gtag) gtag('event', 'redirect_to_checkout', { 'session_id': sessionId });
+            window.location.href = url;
+            return;
+          }
+
+          // Option B: Use client-side Stripe redirectToCheckout with sessionId
+          if (stripe && sessionId) {
+            const { error } = await stripe.redirectToCheckout({ sessionId });
+            if (error) throw error;
+          } else {
+            throw new Error('Missing Stripe client or sessionId');
+          }
+
+        } catch(err){
+          console.error('Checkout start failed', err);
+          alert('Unable to start checkout. Please try again later.');
+          if (window.gtag) gtag('event', 'checkout_error', { 'error': err.message });
+        }
+      });
+
+      // After returning from Checkout, Stripe will redirect to success/cancel URLs you configure server-side.
+      // We detect success via URL parameters to fire analytics purchase event.
+      (function detectCheckoutResult(){
+        const params = new URLSearchParams(window.location.search);
+        const session_id = params.get('session_id') || params.get('sessionId');
+        const status = params.get('checkout_status') || params.get('status');
+        if (session_id && status === 'success'){
+          // Fire analytics purchase event
+          if (window.gtag) gtag('event', 'purchase', { 'transaction_id': session_id, 'currency':'USD' });
+          // Optional: show a friendly message
+          setTimeout(()=> alert('Thank you — your payment succeeded.'), 300);
+        }
+      })();
+
+      // Simple focus trap implementation (small, robust)
+      let focusable = [];
+      let trapHandler = null;
+      function trapFocus(container){
+        focusable = Array.from(container.querySelectorAll('a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])'))
+          .filter(el => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length -1];
+        trapHandler = function(e){
+          if (e.key !== 'Tab') return;
+          if (e.shiftKey){ if (document.activeElement === first){ e.preventDefault(); last.focus(); } }
+          else { if (document.activeElement === last){ e.preventDefault(); first.focus(); } }
+        };
+        document.addEventListener('keydown', trapHandler);
+      }
+      function releaseFocusTrap(){ if (trapHandler) document.removeEventListener('keydown', trapHandler); trapHandler = null }
+
+    })();
+
+  </script>
+
+  <!-- Notes for maintainers:
+       - Implement a server endpoint at CREATE_CHECKOUT_SESSION_URL that creates a Stripe Checkout session using your secret key.
+         Example server payload expectations: { email, plan }
+         The server should return JSON { sessionId } or { url }.
+       - Set your Stripe Checkout success_url and cancel_url to include parameters you can read here (e.g. success_url: https://your-site/mirror-room.html?checkout_status=success&session_id={CHECKOUT_SESSION_ID})
+       - Replace STRIPE_PUBLISHABLE_KEY with your publishable key and Google Analytics ID above.
+       - Consider adding server-side verification (webhook) to confirm payments before granting access.
+
+       Analytics events emitted:
+         - open_modal (when modal opens)
+         - begin_checkout (when user submits form)
+         - redirect_to_checkout (if server provides a hosted URL)
+         - checkout_error (on failure)
+         - purchase (if URL indicates success)
+  -->
+
+</body>
+</html>
